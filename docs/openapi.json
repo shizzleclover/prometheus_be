@@ -1,0 +1,177 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Prometheus Chatbot API",
+    "version": "1.0.0"
+  },
+  "servers": [
+    { "url": "http://localhost:3000" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "AuthRegister": {
+        "type": "object",
+        "required": ["username", "email", "password"],
+        "properties": {
+          "username": {"type": "string"},
+          "email": {"type": "string", "format": "email"},
+          "password": {"type": "string"}
+        }
+      },
+      "AuthLogin": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": {"type": "string", "format": "email"},
+          "password": {"type": "string"}
+        }
+      },
+      "MessageInput": {
+        "type": "object",
+        "required": ["message"],
+        "properties": { "message": {"type": "string", "maxLength": 2000} }
+      },
+      "Demographics": {
+        "type": "object",
+        "properties": {
+          "gender": {"type": "string"},
+          "nationality": {"type": "string"},
+          "race": {"type": "string"},
+          "tribe": {"type": "string"},
+          "skinColor": {"type": "string"},
+          "disabilities": {"type": "array", "items": {"type": "string"}},
+          "politicalViews": {"type": "string"},
+          "moralAlignment": {"type": "string"},
+          "historicalFigureResonates": {"type": "string"},
+          "historicalFigureLiked": {"type": "string"},
+          "historicalFigureHated": {"type": "string"},
+          "additionalInfo": {"type": "string"},
+          "religion": {"type": "string"},
+          "religiousIntensity": {"type": "string"},
+          "culturalBackground": {"type": "string"},
+          "primaryLanguage": {"type": "string"},
+          "languagesSpoken": {"type": "array", "items": {"type": "string"}},
+          "economicViews": {"type": "string"},
+          "socialValues": {"type": "string"},
+          "religiousPhilosophy": {"type": "string"},
+          "environmentalStance": {"type": "string"},
+          "controversialTopicStances": {
+            "type": "object",
+            "properties": {
+              "abortion": {"type": "string"},
+              "guns": {"type": "string"},
+              "immigration": {"type": "string"}
+            }
+          },
+          "sexualOrientation": {"type": "string"},
+          "relationshipStatus": {"type": "string"},
+          "parentalStatus": {"type": "string"},
+          "generationalIdentity": {"type": "string"},
+          "urbanRuralSuburban": {"type": "string"},
+          "personalityType": {"type": "string"},
+          "humorStyle": {"type": "string"},
+          "communicationPreference": {"type": "string"},
+          "sensitivityTopics": {"type": "array", "items": {"type": "string"}},
+          "favoriteHistoricalEra": {"type": "string"},
+          "leastFavoriteHistoricalEra": {"type": "string"},
+          "culturalIconsYouLove": {"type": "array", "items": {"type": "string"}},
+          "culturalIconsYouHate": {"type": "array", "items": {"type": "string"}},
+          "politicalFiguresYouSupport": {"type": "array", "items": {"type": "string"}},
+          "politicalFiguresYouOppose": {"type": "array", "items": {"type": "string"}},
+          "mediaConsumption": {"type": "array", "items": {"type": "string"}},
+          "hobbiesInterests": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/auth/register": {
+      "post": {
+        "summary": "Register a new user",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AuthRegister"}}}},
+        "responses": {"201": {"description": "Created"}, "400": {"description": "Validation error"}}
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "summary": "Login user",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AuthLogin"}}}},
+        "responses": {"200": {"description": "OK"}, "401": {"description": "Invalid credentials"}}
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "summary": "Get current user",
+        "security": [{"bearerAuth": []}],
+        "responses": {"200": {"description": "OK"}, "401": {"description": "Unauthorized"}}
+      }
+    },
+    "/api/users/profile": {
+      "get": {
+        "summary": "Get user profile",
+        "security": [{"bearerAuth": []}],
+        "responses": {"200": {"description": "OK"}, "401": {"description": "Unauthorized"}}
+      },
+      "put": {
+        "summary": "Update user profile",
+        "security": [{"bearerAuth": []}],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object"}}}},
+        "responses": {"200": {"description": "Updated"}, "400": {"description": "Protected fields"}}
+      },
+      "delete": {
+        "summary": "Deactivate account",
+        "security": [{"bearerAuth": []}],
+        "responses": {"200": {"description": "Deactivated"}}
+      }
+    },
+    "/api/users/demographics": {
+      "get": {
+        "summary": "Get demographics",
+        "security": [{"bearerAuth": []}],
+        "responses": {"200": {"description": "OK", "content": {"application/json": {"schema": {"type": "object", "properties": {"demographics": {"$ref": "#/components/schemas/Demographics"}}}}}}, "401": {"description": "Unauthorized"}}
+      },
+      "post": {
+        "summary": "Create demographics",
+        "security": [{"bearerAuth": []}],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Demographics"}}}},
+        "responses": {"201": {"description": "Created"}, "400": {"description": "Validation error"}}
+      },
+      "put": {
+        "summary": "Update demographics",
+        "security": [{"bearerAuth": []}],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Demographics"}}}},
+        "responses": {"200": {"description": "Updated"}}
+      }
+    },
+    "/api/chat/{conversationId}/messages": {
+      "post": {
+        "summary": "Send message and get model reply",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {"in": "path", "name": "conversationId", "required": true, "schema": {"type": "string"}}
+        ],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/MessageInput"}}}},
+        "responses": {"200": {"description": "OK"}, "400": {"description": "Validation error"}, "500": {"description": "Model error"}}
+      }
+    },
+    "/api/chat/{conversationId}": {
+      "get": {
+        "summary": "Get a conversation",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {"in": "path", "name": "conversationId", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {"200": {"description": "OK"}, "404": {"description": "Not found"}}
+      }
+    }
+  }
+}
+
+
