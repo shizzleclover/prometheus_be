@@ -19,7 +19,8 @@ router.post('/register', [
   // Validation rules
   body('username').trim().isLength({ min: 3, max: 30 }).withMessage('Username must be 3-30 characters'),
   body('email').isEmail().normalizeEmail().withMessage('Invalid email'),
-  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
+  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+  body('acceptedTermsAndConditions').isBoolean().withMessage('Terms and conditions acceptance must be true')
 ], async (req, res) => {
   try {
     // Check validation errors
@@ -28,7 +29,7 @@ router.post('/register', [
       return res.status(400).json({ errors: errors.array() });
     }
     
-    const { username, email, password, ...optionalFields } = req.body;
+    const { username, email, password, acceptedTermsAndConditions, ...optionalFields } = req.body;
     
     // Check if user already exists
     const existingUser = await User.findOne({ $or: [{ email }, { username }] });
@@ -39,11 +40,17 @@ router.post('/register', [
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
     
+    // Validate terms acceptance
+    if (!acceptedTermsAndConditions) {
+      return res.status(400).json({ error: 'You must accept the terms and conditions to register' });
+    }
+
     // Create user with minimal required fields
     const user = await User.create({
       username,
       email,
       hashedPassword,
+      acceptedTermsAndConditions,
       ...optionalFields // Spread any optional fields (but not demographics)
     });
     

@@ -114,7 +114,7 @@ router.put('/profile', protect, async (req, res) => {
     } = req.body;
     
     // Check if user tried to update protected fields
-    const protectedFields = ['username', 'email', 'hashedPassword', '_id', 'createdAt', 'updatedAt', '__v'];
+    const protectedFields = ['username', 'email', 'hashedPassword', 'acceptedTermsAndConditions', '_id', 'createdAt', 'updatedAt', '__v'];
     const attemptedProtectedUpdates = protectedFields.filter(field => req.body.hasOwnProperty(field));
     
     if (attemptedProtectedUpdates.length > 0) {

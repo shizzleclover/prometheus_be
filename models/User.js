@@ -21,6 +21,11 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  acceptedTermsAndConditions: {
+    type: Boolean,
+    required: true,
+    default: false
+  },
   gender: String,
   nationality: String,
   

@@ -18,11 +18,12 @@
     "schemas": {
       "AuthRegister": {
         "type": "object",
-        "required": ["username", "email", "password"],
+        "required": ["username", "email", "password", "acceptedTermsAndConditions"],
         "properties": {
           "username": {"type": "string"},
           "email": {"type": "string", "format": "email"},
-          "password": {"type": "string"}
+          "password": {"type": "string"},
+          "acceptedTermsAndConditions": {"type": "boolean", "description": "Must be true to register"}
         }
       },
       "AuthLogin": {

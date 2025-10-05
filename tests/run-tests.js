@@ -9,6 +9,7 @@ async function testAuth() {
     username: `user${ts}`,
     email: `user${ts}@example.com`,
     password: 'password123',
+    acceptedTermsAndConditions: true,
   });
   const token = register.data.token;
 
