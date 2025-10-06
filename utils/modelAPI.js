@@ -1,63 +1,50 @@
 const axios = require('axios');
 
-const PYTHON_API_URL = (process.env.PYTHON_API_URL || 'https://santacl-prometheus.hf.space').replace(/\/$/, '');
+const PYTHON_API_URL = (process.env.PYTHON_API_URL || '').replace(/\/$/, '');
+if (!PYTHON_API_URL) {
+  throw new Error('PYTHON_API_URL environment variable is not set. Please configure it in your environment.');
+}
+
+function removeEmpty(obj) {
+  const out = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (v === null || v === undefined) continue;
+    if (Array.isArray(v) && v.length === 0) continue;
+    if (typeof v === 'object' && !Array.isArray(v)) {
+      const nested = removeEmpty(v);
+      if (Object.keys(nested).length === 0) continue;
+      out[k] = nested;
+    } else if (typeof v === 'string' && v.trim() === '') {
+      continue;
+    } else {
+      out[k] = v;
+    }
+  }
+  return out;
+}
 
 function formatDemographics(userProfile) {
   if (!userProfile) return {};
-  return {
-    // Basic demographics
+
+  // Only include a concise, essential subset (~10 fields)
+  const essentials = {
     gender: userProfile.gender || null,
     nationality: userProfile.nationality || null,
-    race: userProfile.race || null,
-    tribe: userProfile.tribe || null,
-    skinColor: userProfile.skinColor || null,
-    disabilities: userProfile.disabilities || [],
-    politicalViews: userProfile.politicalViews || null,
-    moralAlignment: userProfile.moralAlignment || null,
-    historicalFigureResonates: userProfile.historicalFigureResonates || null,
-    historicalFigureLiked: userProfile.historicalFigureLiked || null,
-    historicalFigureHated: userProfile.historicalFigureHated || null,
-    additionalInfo: userProfile.additionalInfo || null,
-
-    // Cultural/Religious
-    religion: userProfile.religion || null,
-    religiousIntensity: userProfile.religiousIntensity || null,
-    culturalBackground: userProfile.culturalBackground || null,
     primaryLanguage: userProfile.primaryLanguage || null,
     languagesSpoken: userProfile.languagesSpoken || [],
-
-    // Ideological
+    politicalViews: userProfile.politicalViews || null,
     economicViews: userProfile.economicViews || null,
     socialValues: userProfile.socialValues || null,
-    religiousPhilosophy: userProfile.religiousPhilosophy || null,
     environmentalStance: userProfile.environmentalStance || null,
-    controversialTopicStances: userProfile.controversialTopicStances || {},
-
-    // Personal Identity
-    sexualOrientation: userProfile.sexualOrientation || null,
-    relationshipStatus: userProfile.relationshipStatus || null,
-    parentalStatus: userProfile.parentalStatus || null,
-    generationalIdentity: userProfile.generationalIdentity || null,
-    urbanRuralSuburban: userProfile.urbanRuralSuburban || null,
-
-    // Personality
     personalityType: userProfile.personalityType || null,
     humorStyle: userProfile.humorStyle || null,
     communicationPreference: userProfile.communicationPreference || null,
-    sensitivityTopics: userProfile.sensitivityTopics || [],
-
-    // Historical/Cultural
-    favoriteHistoricalEra: userProfile.favoriteHistoricalEra || null,
-    leastFavoriteHistoricalEra: userProfile.leastFavoriteHistoricalEra || null,
-    culturalIconsYouLove: userProfile.culturalIconsYouLove || [],
-    culturalIconsYouHate: userProfile.culturalIconsYouHate || [],
-
-    // Media/Interests
-    politicalFiguresYouSupport: userProfile.politicalFiguresYouSupport || [],
-    politicalFiguresYouOppose: userProfile.politicalFiguresYouOppose || [],
     mediaConsumption: userProfile.mediaConsumption || [],
     hobbiesInterests: userProfile.hobbiesInterests || [],
   };
+
+  // Drop keys with null/empty values so it's fine if client passes nothing
+  return removeEmpty(essentials);
 }
 
 function formatPreviousChats(conversationHistory) {
@@ -73,11 +60,6 @@ function formatPreviousChats(conversationHistory) {
 }
 
 async function getModelResponse(message, userProfile, conversationHistory, userId) {
-  // Mock mode for development or when API URL missing
-  if (process.env.MOCK_MODEL === 'true' || !process.env.PYTHON_API_URL) {
-    return `Mock reply to: ${message}`;
-  }
-
   const demographics = formatDemographics(userProfile);
   const previous_chats = formatPreviousChats((conversationHistory || []).slice(-20));
 
@@ -97,8 +79,7 @@ async function getModelResponse(message, userProfile, conversationHistory, userI
     });
 
     const data = resp.data;
-    const reply =
-      (typeof data === 'string' ? data : (data.response || data.message || data.reply));
+    const reply = typeof data === 'string' ? data : data.response || data.message || data.reply;
 
     if (typeof reply !== 'string' || !reply.trim()) {
       throw new Error('Invalid response format from model API');
@@ -117,12 +98,11 @@ async function getModelResponse(message, userProfile, conversationHistory, userI
       if (status >= 500) throw new Error('Model service is experiencing issues. Please try again later.');
       throw new Error(`Model API error: ${msg}`);
     }
-    if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
-      if (process.env.MOCK_MODEL !== 'false') return `Mock reply to: ${message}`;
-      throw new Error('Model service is unavailable');
-    }
     if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
       throw new Error('Model request timed out');
+    }
+    if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+      throw new Error('Model service is unavailable');
     }
     throw new Error(error.message || 'Model request failed');
   }
