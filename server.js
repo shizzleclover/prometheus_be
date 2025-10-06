@@ -43,10 +43,69 @@ const corsOptions = {
   allowedHeaders: ['Content-Type', 'Authorization'],
 };
 app.use(cors(corsOptions));
-// Removed app.options('*', ...) due to Express 5 path-to-regexp change
 
 app.use(express.json()); // Parse JSON requests
 app.use(sanitizeRequest); // Prevent MongoDB operator injection (Express 5 safe)
+
+// Request/Response logging middleware (redacts sensitive fields)
+(function attachLogging() {
+  const MAX_LEN = 1000; // chars
+  const SENSITIVE_KEYS = new Set(['password', 'hashedPassword', 'token', 'authorization']);
+
+  function redact(obj) {
+    if (!obj || typeof obj !== 'object') return obj;
+    if (Array.isArray(obj)) return obj.slice(0, 50).map(redact); // limit array length
+    const out = {};
+    for (const [k, v] of Object.entries(obj)) {
+      if (SENSITIVE_KEYS.has(k.toLowerCase())) {
+        out[k] = '[REDACTED]';
+      } else if (typeof v === 'object' && v !== null) {
+        out[k] = redact(v);
+      } else {
+        out[k] = v;
+      }
+    }
+    return out;
+  }
+
+  function toLogString(data) {
+    try {
+      if (data === undefined) return '';
+      if (Buffer.isBuffer(data)) return `[Buffer ${data.length}b]`;
+      if (typeof data === 'string') return data.length > MAX_LEN ? data.slice(0, MAX_LEN) + '…' : data;
+      const json = JSON.stringify(redact(data));
+      return json.length > MAX_LEN ? json.slice(0, MAX_LEN) + '…' : json;
+    } catch (_) {
+      return '[Unserializable]';
+    }
+  }
+
+  app.use((req, res, next) => {
+    const start = Date.now();
+    const reqInfo = `${req.method} ${req.originalUrl}`;
+    const reqBodyStr = toLogString(req.body);
+
+    const originalSend = res.send.bind(res);
+    res.send = (body) => {
+      const durationMs = Date.now() - start;
+      const status = res.statusCode;
+      const resBodyStr = toLogString(body);
+
+      // Basic single-line summary
+      console.log(`➡️  ${reqInfo} | status=${status} | ${durationMs}ms`);
+
+      // Detailed bodies (only in development)
+      if (process.env.NODE_ENV !== 'production') {
+        if (reqBodyStr) console.log(`   ↳ req.body: ${reqBodyStr}`);
+        if (resBodyStr) console.log(`   ↳ res.body: ${resBodyStr}`);
+      }
+
+      return originalSend(body);
+    };
+
+    next();
+  });
+})();
 
 // Routes
 app.use('/api/auth', authRoutes);
