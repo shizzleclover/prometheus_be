@@ -5,6 +5,16 @@ const { sanitizeRequest } = require('./middleware/sanitize');
 const helmet = require('helmet');
 const connectDB = require('./config/database');
 
+// Validate required environment variables
+const requiredEnvVars = ['MONGODB_URI', 'JWT_SECRET'];
+const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+
+if (missingVars.length > 0) {
+  console.error('❌ Missing required environment variables:', missingVars.join(', '));
+  console.error('Please set these variables in your deployment environment.');
+  process.exit(1);
+}
+
 // Import models to test they work
 const User = require('./models/User');
 const Conversation = require('./models/Conversation');
@@ -24,10 +34,17 @@ connectDB();
 
 // Middleware
 app.use(helmet()); // Basic security
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+
+// CORS: reflect request origin to allow all origins safely with credentials
+const corsOptions = {
+  origin: true, // Reflect the request origin
   credentials: true,
-}));
+  methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+app.use(cors(corsOptions));
+// Removed app.options('*', ...) due to Express 5 path-to-regexp change
+
 app.use(express.json()); // Parse JSON requests
 app.use(sanitizeRequest); // Prevent MongoDB operator injection (Express 5 safe)
 
