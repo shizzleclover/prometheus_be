@@ -75,7 +75,7 @@ async function getModelResponse(message, userProfile, conversationHistory, userI
   try {
     const resp = await axios.post(`${PYTHON_API_URL}/chat`, payload, {
       headers: { 'Content-Type': 'application/json' },
-      timeout: 30000,
+      timeout: 45000,
     });
 
     const data = resp.data;

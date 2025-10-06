@@ -4,6 +4,7 @@ const cors = require('cors');
 const { sanitizeRequest } = require('./middleware/sanitize');
 const helmet = require('helmet');
 const connectDB = require('./config/database');
+const axios = require('axios');
 
 // Validate required environment variables
 const requiredEnvVars = ['MONGODB_URI', 'JWT_SECRET'];
@@ -129,6 +130,16 @@ app.get('/', (req, res) => {
     }
   });
 });
+
+// Warmup ping to Python API (non-blocking)
+(function warmupModel() {
+  const base = (process.env.PYTHON_API_URL || '').replace(/\/$/, '');
+  if (!base) return;
+  const payload = { message: 'ping', user_id: 'warmup', metadata: { demographics: {}, previous_chats: [] } };
+  axios.post(`${base}/chat`, payload, { headers: { 'Content-Type': 'application/json' }, timeout: 5000 })
+    .then(() => console.log('🔥 Model warmup ping sent'))
+    .catch((e) => console.log('🔥 Model warmup skipped:', e.message));
+})();
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
