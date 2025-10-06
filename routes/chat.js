@@ -100,7 +100,7 @@ router.post(
         timestamp: m.timestamp,
       }));
 
-      // Call Python model using new contract
+      // Call Python model using new contract with one retry on transient errors
       let replyText;
       try {
         replyText = await getModelResponse(
@@ -110,7 +110,23 @@ router.post(
           req.user._id.toString()
         );
       } catch (modelErr) {
-        return res.status(503).json({ error: modelErr.message || 'Failed to generate response.' });
+        const transient = /timed out|unavailable|experiencing issues/i.test(modelErr.message || '');
+        if (transient) {
+          // small backoff then retry once
+          await new Promise(r => setTimeout(r, 1500));
+          try {
+            replyText = await getModelResponse(
+              message,
+              userProfile,
+              conversationHistory,
+              req.user._id.toString()
+            );
+          } catch (retryErr) {
+            return res.status(503).json({ error: retryErr.message || 'Failed to generate response.' });
+          }
+        } else {
+          return res.status(503).json({ error: modelErr.message || 'Failed to generate response.' });
+        }
       }
 
       // Append bot reply
